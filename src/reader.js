@@ -65,7 +65,10 @@ Reader.fromByteArray = function(arr, callback) {
 		var section = new Section();
 		section.type = p.readLong();
 		switch(section.type) {
-			case SectionTypes.THREE_DIMENSIONAL:
+			case 0:
+			case 1:
+			case 4:
+			case 5:
 				// 3D frame
 				section.name = p.readString(8);
 				section.company = p.readString(8);
@@ -78,34 +81,27 @@ Reader.fromByteArray = function(arr, callback) {
 					var point = new Point();
 					point.x = p.readSignedShort();
 					point.y = p.readSignedShort();
-					point.z = p.readSignedShort();
-					var st = p.readShort();
-					point.color = (st >> 0) & 0x7F; 
-					point.blanking = (st & BlankingBit) == BlankingBit;
-					point.last = (st & LastBit) == LastBit;
+					if(section.type == 0 || section.type == 4) point.z = p.readSignedShort();
+					var st = p.readByte();
+					if(section.type == 0 || section.type == 1){
+						var c = p.readByte();
+						point.color = c; 
+					}
+					else if(section.type == 4 || section.type == 5){
+						var color = new Color();
+						color.b = p.readByte();
+						color.g = p.readByte();
+						color.r = p.readByte();
+						section.colors.push(color);
+						point.color = section.colors.length;
+					}
+					point.blanking = (st & 0x40) == 0x40;
+					point.last = (st & 0x80) == 0x80;
 					section.points.push(point);
 				}
-				break;
-			case SectionTypes.TWO_DIMENSIONAL:
-				// 2D frame
-				section.name = p.readString(8);
-				section.company = p.readString(8);
-				var np = p.readShort();
-				section.index = p.readShort();
-				section.total = p.readShort();
-				section.head = p.readByte();
-				p.readByte();
-				for (var i=0; i<np; i++) {
-					var point = new Point();
-					point.x = p.readSignedShort();
-					point.y = p.readSignedShort();
-					var st = p.readShort();
-					point.color = (st >> 0) & 0x7F; 
-					point.blanking = (st & BlankingBit) == BlankingBit;
-					point.last = (st & LastBit) == LastBit;
-					section.points.push(point);
-				}
-				break;
+			break;
+			
+				
 			case SectionTypes.COLOR_TABLE:
 				// color table
 				section.name = p.readString(8);
