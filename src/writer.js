@@ -52,11 +52,21 @@ Writer.toByteArray = function(file, callback) {
 	var p = new ArrayWriter();
 	for(var si in file.sections) {
 		var section = file.sections[si];
-		switch(section.type) {
-			case SectionTypes.THREE_DIMENSIONAL:
-				// 3d frame
+		Writer.readFrame(section, callback, section.type, p);
+	}
+	callback(p.bytes);
+}
+
+Writer.readFrame = function(section, callback, format, p) {
+
+		switch(format) {
+			//Frame:
+			case 0:	//3D, palette
+			case 1: //2D, palette
+			case 4: //3D, RGB
+			case 5: //2D, RGB
 				p.writeString('ILDA', 4);
-				p.writeLong(section.type);
+				p.writeLong(format);
 				p.writeString(section.name, 8);
 				p.writeString(section.company, 8);
 				p.writeShort(section.points.length);
@@ -68,40 +78,24 @@ Writer.toByteArray = function(file, callback) {
 					var point = section.points[i];
 					p.writeSignedShort(point.x);
 					p.writeSignedShort(point.y);
-					p.writeSignedShort(point.z);
+					if(format == 0 || format == 4) p.writeSignedShort(point.z);
+					if(format == 0 || format == 1) p.writeByte(point.color & 0xFF);
 					var st = 0;
-					st |= (point.color & 0x7F);
 					if (point.blanking)
-						st |= BlankingBit;
+						st |= 0x40;
 					if (point.last || i == section.points.length-1)
-						st |= LastBit;
-					p.writeShort(st);
+						st |= 0x80;
+					p.writeByte(st);
+					if(format == 4 || format == 5)
+					{
+						var color = section.colors[i];
+						p.writeByte(color.b);
+						p.writeByte(color.g);
+						p.writeByte(color.r);
+					}
 				}
 				break;
-			case SectionTypes.TWO_DIMENSIONAL:
-				// 2d frame
-				p.writeString('ILDA', 4);
-				p.writeLong(section.type);
-				p.writeString(section.name, 8);
-				p.writeString(section.company, 8);
-				p.writeShort(section.points.length);
-				p.writeShort(section.index);
-				p.writeShort(section.total);
-				p.writeByte(section.head);
-				p.writeByte(0);
-				for(var i=0; i<section.points.length; i++) {
-					var point = section.points[i];
-					p.writeSignedShort(point.x);
-					p.writeSignedShort(point.y);
-					var st = 0;
-					st |= (point.color & 0x7F);
-					if (point.blanking)
-						st |= BlankingBit;
-					if (point.last || i == section.points.length-1)
-						st |= LastBit;
-					p.writeShort(st);
-				}
-				break;
+			
 			case SectionTypes.COLOR_TABLE:
 				// color palette
 				p.writeString('ILDA', 4);
@@ -135,8 +129,8 @@ Writer.toByteArray = function(file, callback) {
 				}
 				break;
 		}
-	}
-	callback(p.bytes);
+	
+	
 }
 
 ILDA.Writer = Writer;
