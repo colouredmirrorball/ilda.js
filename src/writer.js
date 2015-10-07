@@ -52,12 +52,22 @@ Writer.toByteArray = function(file, callback) {
 	var p = new ArrayWriter();
 	for(var si in file.sections) {
 		var section = file.sections[si];
-		Writer.readFrame(section, callback, section.type, p);
+		Writer.readFrame(section, section.type, p);
 	}
 	callback(p.bytes);
 }
 
-Writer.readFrame = function(section, callback, format, p) {
+Writer.toByteArrayWithFormat = function(file, callback, format)
+{
+	var p = new ArrayWriter();
+	for(var si in file.sections) {
+		var section = file.sections[si];
+		Writer.readFrame(section, format, p);
+	}
+	callback(p.bytes);
+}
+
+Writer.readFrame = function(section, format, p) {
 
 		switch(format) {
 			//Frame:
